@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: library_db
+    restart: always
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - library_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library -d library"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../test-manager-library-3413974-api
+      dockerfile: Dockerfile
+    container_name: library_api
+    restart: always
+    environment:
+      APP_NAME: "Manager Library"
+      APP_ENV: local
+      APP_KEY: "base64:q2e5x4F41V6h88Jm3bLqQeKzWpT9yUx7oPr1sTv6uAw="
+      APP_DEBUG: "false"
+      APP_TIMEZONE: UTC
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: library
+      DB_USERNAME: library
+      DB_PASSWORD: library
+      DB_SCHEMA: library
+      JWT_SECRET: "super_secret_jwt_key_library_3413974_adso_2026"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin1234"
+      CORS_ORIGIN: "http://localhost:5173"
+      COVERS_DIR: "/var/covers"
+    ports:
+      - "8000:8000"
+    volumes:
+      - library_covers:/var/covers
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ../test-manager-library-3413974-app
+      dockerfile: Dockerfile
+    container_name: library_app
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+  page:
+    image: nginx:alpine
+    container_name: library_page
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ../test-manager-library-3413974-page:/usr/share/nginx/html:ro
+
+volumes:
+  library_pgdata:
+  library_covers:
