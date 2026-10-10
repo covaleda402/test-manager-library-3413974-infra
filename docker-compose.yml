@@ -20,7 +20,7 @@ services:
 
   api:
     build:
-      context: ../test-manager-library-3413974-api
+      context: ${API_DIR:-../test-manager-library-3413974-api}
       dockerfile: Dockerfile
     container_name: library_api
     restart: always
@@ -52,7 +52,7 @@ services:
 
   app:
     build:
-      context: ../test-manager-library-3413974-app
+      context: ${APP_DIR:-../test-manager-library-3413974-app}
       dockerfile: Dockerfile
     container_name: library_app
     restart: always

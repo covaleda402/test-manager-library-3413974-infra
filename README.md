@@ -58,3 +58,10 @@ Todos los servicios deben figurar en estado `Up` (y `library_db` como `healthy`)
 ```bash
 docker compose -f docker-compose.yml down
 ```
+
+### 4.5 Portabilidad de Rutas de Construcción
+Por defecto, las rutas de compilación apuntan a los nombres oficiales de los repositorios (`../test-manager-library-3413974-api` y `../test-manager-library-3413974-app`). Si se clonan en carpetas con nombres personalizados (por ejemplo `../api` o `../app`), pueden especificarse mediante las variables de entorno `API_DIR` y `APP_DIR` sin modificar el archivo compose:
+```bash
+API_DIR=../api APP_DIR=../app docker compose up -d --build
+```
+
