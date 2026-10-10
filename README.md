@@ -1,51 +1,60 @@
-# test-manager-library-3413974-infra
+# Manager Library — Infraestructura y Orquestación
 
-> **Prueba técnica · Ficha ADSO 3413974**
-> Horario: de **9:15 a. m. a 3:00 p. m.** (15:00). Después, **feria de presentación** de cada proyecto.
+> **Prueba técnica · Ficha ADSO 3413974**  
+> Orquestación de servicios en contenedores **Docker** mediante **Docker Compose**, configuración de redes, almacenamiento persistente y base de datos relacional PostgreSQL.
 
-Este repositorio es la **infraestructura** de *Manager Library*: contenedores, red, volúmenes y el motor de base de datos vacío. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
+---
 
-## Instrucciones
+## 1. Topología de Servicios
 
-Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto
-con el spec planteado**.
+La solución define 4 contenedores interconectados bajo una red puente privada (`library_net`):
 
-1. Hacer fork, a su cuenta de GitHub, de cada repositorio de la tabla del final.
-2. Leer el spec en [`test-manager-library-3413974-docs`](https://github.com/code-sena/test-manager-library-3413974-docs).
-   Se entrega en dos versiones: `spec-python/` y `spec-.net/`.
-3. Desarrollar en los forks.
+| Servicio | Contenedor | Imagen / Base | Puerto Host | Descripción |
+|---|---|---|---|---|
+| `db` | `library_db` | `postgres:16-alpine` | `5432` | Motor PostgreSQL 16 que arranca vacío, sin scripts DDL manuales (cumpliendo Art. V y ADR-001). Healthcheck activo en `pg_isready`. |
+| `api` | `library_api` | `php:8.2-cli` | `8000` | Backend en Laravel 11. Ejecuta migraciones, seeding inicial y atiende el contrato REST en `/api/v1`. Monta volumen persistente para portadas. |
+| `app` | `library_app` | `nginx:alpine` | `5173` | Frontend SPA en React 18 / Vite compilado y servido por Nginx con enrutamiento HTML5. |
+| `page` | `library_page` | `nginx:alpine` | `8080` | Sitio web público estático de presentación de la biblioteca. |
 
-## El reto se desarrolla con React y PHP (Laravel)
+---
 
-El spec está escrito para Python y para .NET, pero el reto **no** se hace en esos lenguajes:
+## 2. Volúmenes y Persistencia
 
-| Capa | Tecnología del reto |
-|---|---|
-| Frontend | React |
-| Backend | PHP con Laravel |
+1. **`db_data`**: Volumen nombrado de Docker que almacena los datos de PostgreSQL de manera persistente en `./data/postgres`.
+2. **`covers_data`**: Volumen que persiste los archivos binarios de las portadas de libros en `/var/covers` dentro del contenedor del backend.
 
-Lo que el spec define sobre el negocio —historias, criterios de aceptación, reglas, contrato de la
-API, modelo de datos— se respeta. Lo que define sobre la tecnología se traduce a React y Laravel.
+---
 
-## La prueba no consiste en escribir el código
+## 3. Principio Innegociable de Base de Datos (ADR-001)
 
-El propósito principal es ver la **capacidad de desempeño con SDD** (*Spec-Driven Development*,
-desarrollo guiado por especificación): cómo se lee, se interpreta y se aplica una especificación
-para llevarla a un stack distinto. El código es el medio, no el fin.
+El contenedor de base de datos **no** contiene scripts de inicialización SQL (`/docker-entrypoint-initdb.d` está deliberadamente vacío).  
+Toda la estructura relacional, claves foráneas, restricciones `CHECK` y la semilla de las 5 categorías oficiales son propiedad exclusiva y se aplican mediante las migraciones de la API en el arranque (`php artisan migrate --force`).
 
-## Feria de presentación
+---
 
-Al cerrar la prueba (3:00 p. m.) cada aprendiz **presenta su proyecto** al grupo: qué construyó del spec, qué dejó fuera y por qué,
-y una demostración corta de lo que funciona (la aplicación y el sitio público). Lo que se presenta es lo que quedó **subido a los forks
-antes de las 3:00 p. m.**: no se presenta nada que no esté en GitHub.
+## 4. Instrucciones de Despliegue
 
-## Los seis repositorios
+### 4.1 Levantar todo el stack
+Desde la raíz del proyecto o desde el directorio de infraestructura:
 
-| Repositorio | Qué va ahí |
-|---|---|
-| [`test-manager-library-3413974-docs`](https://github.com/code-sena/test-manager-library-3413974-docs) | El spec: `spec-python/` y `spec-.net/` |
-| [`test-manager-library-3413974-api`](https://github.com/code-sena/test-manager-library-3413974-api) | Backend en PHP (Laravel) |
-| [`test-manager-library-3413974-app`](https://github.com/code-sena/test-manager-library-3413974-app) | Frontend en React |
-| [`test-manager-library-3413974-page`](https://github.com/code-sena/test-manager-library-3413974-page) | Sitio público estático de presentación |
-| [`test-manager-library-3413974-infra`](https://github.com/code-sena/test-manager-library-3413974-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
-| [`test-manager-library-3413974-tool`](https://github.com/code-sena/test-manager-library-3413974-tool) | Utilidades: sembrador de datos de demostración |
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
+
+### 4.2 Verificar estado de los servicios
+```bash
+docker compose -f docker-compose.yml ps
+```
+
+Todos los servicios deben figurar en estado `Up` (y `library_db` como `healthy`).
+
+### 4.3 URLs de acceso local
+* **Aplicación Web (React):** [http://localhost:5173](http://localhost:5173)
+* **API REST (Laravel):** [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
+* **Sitio Web Público:** [http://localhost:8080](http://localhost:8080)
+* **Motor PostgreSQL:** `localhost:5432` (Usuario: `library`, BD: `library`)
+
+### 4.4 Detener los servicios
+```bash
+docker compose -f docker-compose.yml down
+```
